@@ -55,28 +55,35 @@ package
 			
 			
 			//图形 ----------
-			
+			/*
 			var vertices:Vector.<Number> = Vector.<Number>([-0.3, -0.3, 0, 1, 0, 0, // x, y, z, r, g, b
 				-0.3, 0.3, 0, 0, 1, 0, 0.3, 0.3, 0, 0, 0, 1]);
-			
+			*/
+			var vertices:Vector.<Number> = Vector.<Number>([-0.3, -0.3, 0, 1, 0, 0, // x, y, z, r, g, b
+				-0.3, 0.3, 0, 0, 1, 0, 0.3, 0.3, 0, 0, 0, 1, 0.3, -0.3, 0, 1, 0, 0]);
 			
 			//创建一个VertextBuffer3D实例，以便将Vertext Buffer上传至GPU。
 			// Create VertexBuffer3D. 3 vertices, of 6 Numbers each
-			vertexbuffer = context3D.createVertexBuffer(3, 6);//顶点缓冲
+			//vertexbuffer = context3D.createVertexBuffer(3, 6);//顶点缓冲, 定点数&和每个顶点关联的数据量
+			vertexbuffer = context3D.createVertexBuffer(4, 6);//顶点缓冲, 定点数&和每个顶点关联的数据量
 			// Upload VertexBuffer3D to GPU. Offset 0, 3 vertices
-			vertexbuffer.uploadFromVector(vertices, 0, 3);//第三个参数：顶点数量。
+			//vertexbuffer.uploadFromVector(vertices, 0, 3);//第三个参数：顶点数量。
+			vertexbuffer.uploadFromVector(vertices, 0, 4);//第三个参数：顶点数量。
 			
 			
 			//还需要一个Index Buffer来定义三角形
-			var indices:Vector.<uint> = Vector.<uint>([0, 1, 2]);
+			//var indices:Vector.<uint> = Vector.<uint>([0, 1, 2]);
+			var indices:Vector.<uint> = Vector.<uint>([0, 1, 2, 0, 2, 3]);
 			
 			// //图形 ----------
 			
 			
 			// Create IndexBuffer3D. Total of 3 indices. 1 triangle of 3 vertices
-			indexbuffer = context3D.createIndexBuffer(3);//顶点索引
+			//indexbuffer = context3D.createIndexBuffer(3);//顶点索引, 参数：要在缓冲区中存储的顶点数量
+			indexbuffer = context3D.createIndexBuffer(4);//顶点索引, 参数：要在缓冲区中存储的顶点数量
 			// Upload IndexBuffer3D to GPU. Offset 0, count 3
-			indexbuffer.uploadFromVector(indices, 0, 3);
+			//indexbuffer.uploadFromVector(indices, 0, 3);//第一个参数中索引的数量
+			indexbuffer.uploadFromVector(indices, 0, 4);//第一个参数中索引的数量
 			
 			var vertexShaderAssembler:AGALMiniAssembler = new AGALMiniAssembler();
 			//assemble汇编, vertex顶点
@@ -109,7 +116,7 @@ package
 		{
 			if (!context3D)
 				return;
-			
+
 			context3D.clear(1, 1, 1, 1);
 			
 			// vertex position to attribute register 0
