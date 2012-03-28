@@ -64,7 +64,7 @@ package
 			// Create VertexBuffer3D. 3 vertices, of 6 Numbers each
 			vertexbuffer = context3D.createVertexBuffer(3, 6);//顶点缓冲
 			// Upload VertexBuffer3D to GPU. Offset 0, 3 vertices
-			vertexbuffer.uploadFromVector(vertices, 0, 3);
+			vertexbuffer.uploadFromVector(vertices, 0, 3);//第三个参数：顶点数量。
 			
 			
 			//还需要一个Index Buffer来定义三角形
@@ -79,11 +79,18 @@ package
 			indexbuffer.uploadFromVector(indices, 0, 3);
 			
 			var vertexShaderAssembler:AGALMiniAssembler = new AGALMiniAssembler();
+			//assemble汇编, vertex顶点
+			//输出寄存器op，用于顶点着色器
+			//从着色器中访问该属性寄存器的语法：va<n>，其中<n>是属性寄存器的索引号。
+			//从着色器中访问这些寄存器(常量寄存器)的语法：vc<n>，用于顶点着色器
+			//变量寄存器v0
 			vertexShaderAssembler.assemble(Context3DProgramType.VERTEX, "m44 op, va0, vc0\n" + // pos to clipspace
 				"mov v0, va1" // copy color
 				);
 			
 			var fragmentShaderAssembler:AGALMiniAssembler = new AGALMiniAssembler();
+			//fragment片段
+			//输出寄存器oc，用于像素着色器
 			fragmentShaderAssembler.assemble(Context3DProgramType.FRAGMENT, "mov oc, v0");
 			
 			program = context3D.createProgram();//Program3D对象负责储存着色器程序。
