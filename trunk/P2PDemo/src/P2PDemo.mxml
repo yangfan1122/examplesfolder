@@ -41,10 +41,9 @@
 			
 			private var fullScreen:Boolean = false;
 			
-			//private var serverURL:String = "123.58.176.11";
 			private var serverURL:String = "localhost";
-			private var serverPrj:String = "receiveStreamTest";//fmle发布
-			//private var serverPrj:String = "firstFMS";//flash player发布
+			//private var serverURL:String = "123.58.176.11";
+			private var serverPrj:String = "receiveStreamTest";
 			private var streaName:String = "abcd";
 
 			private var rtmfpTimer:Timer = null;
@@ -55,7 +54,9 @@
 			private var netGroup:NetGroup;
 			private var hasNeighbor:Boolean;
 			private var playAuth:String;//客户端用于播放的without
-						
+			
+			private var counter:int;//im here计数
+			
 			private var timer:Timer = new Timer(60000);
 			
 			/**
@@ -168,10 +169,11 @@
 				}
 				else if(event.info.code == "NetGroup.Connect.Success")
 				{
-					Test.t("NetGroup 已构建成功并有权使用函数");//对等网络对话框，点击“允许”
+					Test.t("NetGroup.Connect.Success 已构建成功并有权使用函数");//对等网络对话框，点击“允许”
 
 					//ns=new NetStream(nc, groupSpecifier.groupspecWithoutAuthorizations());
 					ns=new NetStream(nc, playAuth);
+					Test.t("playAuth = "+playAuth);
 									
 					var _client:Object=new Object();
 					_client.onMetaData = onMetaData;
@@ -355,7 +357,9 @@
 			 */	
 			public function serverMessage(_obj:Object = null):void
 			{
-				Test.t("确保ns里有内容发送 serverMessage - _obj="+_obj);
+				counter++;
+				Test.t("im here counter="+counter);
+				
 			}
 			
 			
