@@ -14,9 +14,8 @@
     <sourceAttachmentPath/>
   </compiler>
   <applications>
-    <application path="P2PDemo.mxml"/>
     <application path="Publisher.mxml"/>
-    <application path="P2PDemoForFMLE.mxml"/>
+    <application path="P2PDemo.mxml"/>
   </applications>
   <modules/>
   <buildCSSFiles/>
