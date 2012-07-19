@@ -1,0 +1,398 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"
+			   xmlns:s="library://ns.adobe.com/flex/spark"
+			   xmlns:mx="library://ns.adobe.com/flex/mx"
+			   minWidth="400" minHeight="350" applicationComplete="init()"
+			   backgroundColor="0xcce8cf">
+	<s:layout>
+		<s:BasicLayout/>
+	</s:layout>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import flash.display.*;
+			import flash.events.*;
+			import flash.media.Camera;
+			import flash.media.Video;
+			import flash.net.*;
+			import flash.utils.*;
+			
+			import mx.controls.Alert;
+			import mx.core.IVisualElement;
+			import mx.events.ResizeEvent;
+			
+			import org.osmf.events.LoadEvent;
+			import org.osmf.events.MediaPlayerStateChangeEvent;
+			
+			import spark.components.VideoDisplay;
+			import spark.components.VideoPlayer;
+			
+			private var nc:NetConnection;
+			private var ns:NetStream;
+			private var video:Video;
+			//private var st:SoundTransform = new SoundTransform();
+			//private var netGroup:NetGroup = null;
+			
+			private var videoDisplay:VideoDisplay=new VideoDisplay(); //live
+			private var videoPlayer:VideoPlayer=new VideoPlayer(); //http
+			
+			private var fullScreen:Boolean = false;
+			
+			//private var serverURL:String = "123.58.176.11";
+			private var serverURL:String = "localhost";
+			private var serverPrj:String = "receiveStreamTest";//fmle发布
+			//private var serverPrj:String = "firstFMS";//flash player发布
+			private var streaName:String = "abcd";
+
+			private var rtmfpTimer:Timer = null;
+			private const connectTimeout:int = 5000;
+			private var isRTMFP:Boolean=true;
+			
+			//private var groupSpecifier:GroupSpecifier;//客户端不用它，认证从fms传给客户单120718
+			private var netGroup:NetGroup;
+			private var hasNeighbor:Boolean;
+			private var playAuth:String;//客户端用于播放的without
+						
+			private var timer:Timer = new Timer(60000);
+			
+			/**
+			 *  p2p直播客户端
+			 *  
+			 */ 
+			private function init():void
+			{
+				nc=new NetConnection();
+				nc.addEventListener(NetStatusEvent.NET_STATUS, statusHandler);
+				nc.addEventListener(AsyncErrorEvent.ASYNC_ERROR, asyncHandler);
+				nc.addEventListener(IOErrorEvent.IO_ERROR, IOErrorHandler);
+				nc.client=this;
+				
+				timer.addEventListener(TimerEvent.TIMER, timerHandler);
+				
+				connect();
+			}
+			
+			private function connect(rtmp:Boolean=false):void
+			{
+				//为函数添加布尔参数，通过参数来切换连接FMS服务器的方式
+				//默认情况下我们采用rtmfp的连接
+				var url:String = (rtmp?"rtmp:" : "rtmfp:") + "//"+serverURL+"/"+serverPrj;
+				nc.connect(url);
+				
+				// 判断当采用rtmfp协议连接时候，增添一个连接时间计数器
+				// 通过这个计算器设置的连接超时来判断rtmfp连接是否成功
+				if(!rtmp)
+				{
+					rtmfpTimer = new Timer(connectTimeout, 1);
+					rtmfpTimer.addEventListener(TimerEvent.TIMER_COMPLETE,rtmfpTimeoutHandler)
+					rtmfpTimer.start();
+				}
+			}
+			
+			/**
+			 * 创建连接失败
+			 * @param arg
+			 *
+			 */
+			public function close(... arg):void
+			{
+				//do nothing
+				Test.t("function close - " + arg);
+			}
+			
+			private function rtmfpTimeoutHandler(e:TimerEvent):void
+			{
+				Test.t("rtmp!");
+				isRTMFP=false;
+				rtmfpTimer.stop();
+				rtmfpTimer = null;
+				nc.close();
+				connect(true);
+			}
+			
+			
+			
+			private function statusHandler(event:NetStatusEvent):void
+			{
+				//Netconnection连接有响应，udp可用？
+				if (rtmfpTimer)
+				{
+					rtmfpTimer.stop();
+					rtmfpTimer = null;
+				}
+				
+				
+				/**
+				 * NetStream.Play.UnpublishNotify  发布取消
+				 *
+				 */
+				if (event.info.code == "NetConnection.Connect.Success")
+				{
+					var responder:Responder = new Responder(callSuccess, callStatus);
+					
+					function callSuccess(result:Object):void
+					{
+						trace("callSuccess - "+result);
+					}
+					function callStatus(result:Object):void
+					{
+						trace("callStatus - "+result.description);
+					}
+					
+					/*
+					groupSpecifier = new GroupSpecifier("p2p_test");
+					groupSpecifier.multicastEnabled = true;
+					groupSpecifier.postingEnabled = true;
+					groupSpecifier.serverChannelEnabled = true;			
+					
+					netGroup = new NetGroup(nc, groupSpecifier.groupspecWithoutAuthorizations());
+					netGroup.addEventListener(NetStatusEvent.NET_STATUS, statusHandler);
+					*/
+
+					nc.call("setAuth", responder, "", "dajiangyou");
+					
+				}
+				else if(event.info.code == "NetConnection.Connect.InvalidApp")
+				{
+					//对 NetConnection.connect() 的调用中指定的应用程序名称无效。
+					Test.t(event.info.code + " - onDisconnect();");
+					onDisconnect();
+				}
+				else if (event.info.code == "NetConnection.Connect.Failed")
+				{
+					//连接失败，播放http内容
+					Test.t("连接失败");
+				}
+				else if(event.info.code == "NetGroup.Connect.Success")
+				{
+					Test.t("NetGroup 已构建成功并有权使用函数");//对等网络对话框，点击“允许”
+
+					//ns=new NetStream(nc, groupSpecifier.groupspecWithoutAuthorizations());
+					ns=new NetStream(nc, playAuth);
+									
+					var _client:Object=new Object();
+					_client.onMetaData = onMetaData;
+					_client.serverMessage = serverMessage;
+					ns.client=_client;
+					
+					ns.addEventListener(NetStatusEvent.NET_STATUS, statusHandler);
+					ns.addEventListener(IOErrorEvent.IO_ERROR, IOErrorHandler);
+					ns.addEventListener(AsyncErrorEvent.ASYNC_ERROR, asyncHandler);
+
+				}
+				else if(event.info.code == "NetGroup.Connect.Failed")
+				{
+					Test.t(event.info.code + " - doDisconnect();");
+					doDisconnect();
+				}
+				else if(event.info.code == "NetGroup.MulticastStream.UnpublishNotify")
+				{
+					Test.t(event.info.name +"流在此组中不再可用");
+					doDisconnect();
+					connect();
+				}
+				else if(event.info.code == "NetGroup.Neighbor.Connect")
+				{
+					Test.t("NetGroup.Neighbor.Connect");
+					hasNeighbor = true;
+				}
+				else if(event.info.code == "NetGroup.Posting.Notify")
+				{
+					trace("NetGroup.Posting.Notify - "+event.info.message);	
+				}
+				else if(event.info.code == "NetGroup.SendTo.Notify")
+				{
+					trace("NetGroup.SendTo.Notify - "+event.info.message);	
+				}
+				else if(event.info.code == "NetStream.Connect.Success")
+				{
+					Test.t("P2P 连接尝试成功");
+					alertText.text = "waiting...";
+					
+					video=new Video();
+					video.width=400;
+					video.height=300;
+					video.attachNetStream(ns);
+
+					//videoDisplay.addEventListener(ResizeEvent.RESIZE, doResizeVideo);
+					
+					mainContainer.addElement(videoDisplay);
+					videoDisplay.addChild(video);
+					
+					ns.play(streaName);
+				}
+				else if(event.info.code == "NetStream.MulticastStream.Reset")
+				{
+					//多播订阅已将焦点更改为同一组中使用同一名称发布的其他流。多播流参数的局部替换缺失。请重新应用局部替换，否则会使用新流的默认参数。
+					Test.t("NetStream.MulticastStream.Reset");
+					alertText.text = "";
+					//timer.start();
+				}
+				else if(event.info.code == "NetStream.Connect.Failed")
+				{
+					//P2P 连接尝试失败。info.stream 属性表示已失败的流。
+					Test.t(event.info.code + " - doDisconnect();");
+					doDisconnect();
+				}
+				else
+				{
+					Test.t(event.info.code);
+				}
+			}
+			
+			/*
+			"NetGroup.MulticastStream.PublishNotify"	"status"	当在 NetGroup 的组中检测到新命名的流时发送。info.name:String 属性是检测到的流的名称。
+			
+			*/
+			
+			
+			/**
+			 * 初始化组
+			 *
+			 */
+			private function groupInit():void
+			{
+				/*
+				groupSpecifier = new GroupSpecifier("p2p_test");
+				groupSpecifier.multicastEnabled = true;
+				groupSpecifier.postingEnabled = true;
+				groupSpecifier.serverChannelEnabled = true;	
+				*/
+				
+				//netGroup = new NetGroup(nc, groupSpecifier.groupspecWithoutAuthorizations());
+				netGroup = new NetGroup(nc, playAuth);
+				netGroup.addEventListener(NetStatusEvent.NET_STATUS, statusHandler);
+			}
+
+			public function onBWDone():void
+			{
+			}
+
+			private function IOErrorHandler(event:IOErrorEvent):void
+			{
+				Test.t("IOErrorEvent : "+event);
+			}
+			private function asyncHandler(event:AsyncErrorEvent):void
+			{
+				Test.t("AsyncErrorEvent : "+event);
+			}
+			
+			
+			
+			
+			
+			private function onMetaData(data:Object):void
+			{
+				Test.t("metadata: duration=" + data.duration + " width=" + data.width + " height=" + data.height + " framerate=" + data.framerate);
+			}
+			
+			/**
+			 * 设置音量 
+			 * @param num
+			 * 
+			 */	
+			/*
+			private function setVolume(num:Number):void
+			{
+			if (ns)
+			{
+			st = ns.soundTransform;
+			st.volume = num;
+			ns.soundTransform = st;
+			Test.t(ns.soundTransform.volume+" -");
+			}
+			}
+			*/
+			
+			/**
+			 * 设置视频大小
+			 * */
+			private function doResizeVideo(ignored:* = null):void
+			{
+				if(video)
+				{
+					video.height = videoDisplay.height;
+					video.width = video.height * 4/3
+					video.x = videoDisplay.width / 2 - video.width /2 
+				}               
+			}
+			
+			private function onDisconnect():void
+			{
+				nc = null;
+				ns = null;
+				netGroup = null;
+				
+				hasNeighbor = false;
+			}
+			private function doDisconnect():void
+			{
+				if(nc)nc.close();
+				
+				hasNeighbor = false;
+			}
+			
+			/**
+			 * 获取发布端的without
+			 * @param _obj
+			 * 
+			 */	
+			public function serverUpdate(_obj:Object = null):String
+			{
+				trace("服务器返回的without。 serverUpdate - _obj = "+_obj);
+				playAuth = _obj.toString();
+				groupInit();
+				return "";
+			}
+			
+			/**
+			 * 确保ns里有内容发送
+			 * @param _obj
+			 * 
+			 */	
+			public function serverMessage(_obj:Object = null):void
+			{
+				Test.t("确保ns里有内容发送 serverMessage - _obj="+_obj);
+			}
+			
+			
+			/**
+			 * 告诉其他client，im here 
+			 * @param
+			 * 
+			 */	
+			private function imhere():void
+			{
+				//netGroup.post("im here~~");
+				
+				if(hasNeighbor)
+				{
+					Test.t("netGroup.sendToAllNeighbors");
+					netGroup.sendToAllNeighbors("im here~~");
+				}
+				else
+				{
+					Test.t("木有邻居。。。");
+				}
+			}
+			
+			private function timerHandler(event:TimerEvent):void
+			{
+				imhere();
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:VGroup>
+		<s:Group id="mainContainer" width="400" height="300"/>
+		<s:Label id="alertText" text=""/>
+	</s:VGroup>
+	
+	
+	
+	
+</s:Application>
