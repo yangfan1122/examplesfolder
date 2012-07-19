@@ -14,16 +14,11 @@
 			private var sequenceNumber:uint = 0;
 			private var nsObject:Object = new Object;
 			
-			//Stratus 服务器地址
-			//private const SERVER:String = "rtmfp://stratus.adobe.com/";
 			private const SERVER:String = "rtmfp://localhost/";
-			//开发者Key,请使用你申请的Key
-			//private const DEVKEY:String = "1710124cbf69e3f25b780c13-d6cbf2cb35a1";
-			//private const DEVKEY:String = "receiveStreamTest";
-			private const DEVKEY:String = "firstFMS";
+			//private const SERVER:String = "rtmfp://123.58.176.11/";
+			private const DEVKEY:String = "receiveStreamTest";
 			
 			//组的名字，名字要唯一
-			//private const GROUP_PREFIX:String = "www.flextheworld.com.stratus2.demo";
 			private const GROUP_PREFIX:String = "p2p_test";
 			private const PUBLISH_PW:String = "impassword";//发布密码
 			
@@ -32,12 +27,10 @@
 			[Bindable] 
 			private var joinedGroup:Boolean = false;
 			
-			private function init():void{
-				
-				//设置随机的组名和用户名
-				userName.text = "user " + int(Math.random() * 65536);                
-				groupName.text = "不用改 - channel" + (int(Math.random() * 899) + 101);
-				
+			private function init():void
+			{
+				//userName.text = "user " + int(Math.random() * 65536);                
+				//groupName.text = "不用改 - channel" + (int(Math.random() * 899) + 101);
 			}
 			
 			/**
@@ -125,7 +118,7 @@
 			 */ 
 			private function doConnect():void
 			{
-				updateStatus("Connecting to \"" + SERVER + "\"");
+				updateStatus("Connecting to \"" + SERVER+DEVKEY+ "\"");
 				netConnection = new NetConnection();
 				netConnection.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
 				netConnection.connect(SERVER + DEVKEY);
@@ -147,7 +140,7 @@
 					updateStatus("callStatus\n");
 				}
 				
-				updateStatus("与Stratus链接成功\n");
+				updateStatus("与服务器链接成功\n");
 				connected = true;
 				
 				//定义组
