@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--kevin.luo.sl@gmail.com-->
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml"
+				width="100%" height="100%" applicationComplete="init()" layout="absolute">
+	<mx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			
+			private var netConnection:NetConnection = null;
+			private var netStream:NetStream = null;
+			private var netGroup:NetGroup = null;
+			private var groupSpecifier:GroupSpecifier;
+			private var video:Video = null;
+			private var sequenceNumber:uint = 0;
+			private var nsObject:Object = new Object;
+			
+			//Stratus 服务器地址
+			//private const SERVER:String = "rtmfp://stratus.adobe.com/";
+			private const SERVER:String = "rtmfp://localhost/";
+			//开发者Key,请使用你申请的Key
+			//private const DEVKEY:String = "1710124cbf69e3f25b780c13-d6cbf2cb35a1";
+			//private const DEVKEY:String = "receiveStreamTest";
+			private const DEVKEY:String = "firstFMS";
+			
+			//组的名字，名字要唯一
+			//private const GROUP_PREFIX:String = "www.flextheworld.com.stratus2.demo";
+			private const GROUP_PREFIX:String = "p2p_test";
+			private const PUBLISH_PW:String = "impassword";//发布密码
+			
+			[Bindable] 
+			private var connected:Boolean = false;
+			[Bindable] 
+			private var joinedGroup:Boolean = false;
+			
+			private function init():void{
+				
+				//设置随机的组名和用户名
+				userName.text = "user " + int(Math.random() * 65536);                
+				groupName.text = "不用改 - channel" + (int(Math.random() * 899) + 101);
+				
+			}
+			
+			/**
+			 * 显示链接信息，聊天信息
+			 * */
+			private function updateStatus(msg:Object):void
+			{
+				statusLog.text += msg;
+				statusLog.verticalScrollPosition = statusLog.textHeight;
+				statusLog.validateNow();
+			}
+			
+			/**
+			 * NetStream和Group的事件响应
+			 * */
+			private function netStatusHandler(e:NetStatusEvent):void
+			{
+				switch(e.info.code)
+				{
+					case "NetConnection.Connect.Success": //与Stratus链接成功，开始创建/进入组
+						onConnect();
+						break;
+					
+					case "NetConnection.Connect.Closed":
+					case "NetConnection.Connect.Failed":
+					case "NetConnection.Connect.Rejected":
+					case "NetConnection.Connect.AppShutdown":
+					case "NetConnection.Connect.InvalidApp":    
+						onDisconnect();
+						break;
+					
+					case "NetStream.Connect.Success": //Net Stream 链接成功
+						onNetStreamConnect();
+						break;
+					
+					case "NetStream.Connect.Rejected": // e.info.stream
+					case "NetStream.Connect.Failed": // e.info.stream
+						doDisconnect();
+						break;
+					
+					case "NetGroup.Connect.Success": // e.info.group
+						onNetGroupConnect();
+						break;
+					
+					case "NetGroup.Connect.Rejected": // e.info.group
+					case "NetGroup.Connect.Failed": // e.info.group
+						doDisconnect();
+						break;
+					
+					case "NetGroup.Posting.Notify": // 收到信息
+						onPosting(e.info.message);
+						break;
+					
+					
+					case "NetStream.MulticastStream.Reset":
+					case "NetStream.Buffer.Full":
+						break;
+					
+					case "NetGroup.SendTo.Notify": // e.info.message, e.info.from, e.info.fromLocal
+					case "NetGroup.LocalCoverage.Notify": //
+					case "NetGroup.Neighbor.Connect": // e.info.neighbor
+						updateStatus("NetGroup.Neighbor.Connect \n");
+						//updateStatus("sendStream.peerStreams = "+netStream.peerStreams+"\n");
+						//updateStatus("postresult: " + netGroup.post("a msg for test~~~~")+"\n");
+						updateStatus("netGroup.neighborCount = "+netGroup.neighborCount+"\n");
+						break;
+					case "NetGroup.Neighbor.Disconnect": // e.info.neighbor
+						updateStatus("netGroup.neighborCount = "+netGroup.neighborCount+"\n");
+						break;
+					case "NetGroup.MulticastStream.PublishNotify": // e.info.name
+					case "NetGroup.MulticastStream.UnpublishNotify": // e.info.name
+					case "NetGroup.Replication.Fetch.SendNotify": // e.info.index
+					case "NetGroup.Replication.Fetch.Failed": // e.info.index
+					case "NetGroup.Replication.Fetch.Result": // e.info.index, e.info.object
+					case "NetGroup.Replication.Request": // e.info.index, e.info.requestID
+					default:
+						updateStatus("default: \"" + e.info.code + "\"\n");
+						break;
+				}
+			}
+			
+			/**
+			 *  连接按钮
+			 * 
+			 */ 
+			private function doConnect():void
+			{
+				updateStatus("Connecting to \"" + SERVER + "\"");
+				netConnection = new NetConnection();
+				netConnection.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
+				netConnection.connect(SERVER + DEVKEY);
+			}
+			
+			/**
+			 * 与Stratus 链接成功后触发
+			 * */
+			private function onConnect():void
+			{
+				var responder:Responder = new Responder(callSuccess, callStatus);
+				
+				function callSuccess(result:Object):void
+				{
+					updateStatus("callSuccess\n");
+				}
+				function callStatus(result:Object):void
+				{
+					updateStatus("callStatus\n");
+				}
+				
+				updateStatus("与Stratus链接成功\n");
+				connected = true;
+				
+				//定义组
+				//groupSpecifier = new GroupSpecifier(GROUP_PREFIX + groupName.text);
+				groupSpecifier = new GroupSpecifier(GROUP_PREFIX);
+				groupSpecifier.multicastEnabled = true;//允许多播
+				groupSpecifier.postingEnabled = true;//允许发送数据
+				groupSpecifier.serverChannelEnabled = true;//服务器分配邻居
+				
+				groupSpecifier.makeUnique();//不加亦不影响直播流程
+				groupSpecifier.setPublishPassword(PUBLISH_PW, Math.floor(Math.random()*10000).toString());//发布密码
+				
+				//创建netStream与用户组的链接，我们用他来发送视频和音频流
+				netStream = new NetStream(netConnection, groupSpecifier.groupspecWithAuthorizations());
+				netStream.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
+				netStream.client = nsObject;
+				nsObject.onPeerConnect = onPeerConnectHandler;
+				
+				//加入用户组 
+				netGroup = new NetGroup(netConnection, groupSpecifier.groupspecWithAuthorizations());
+				netGroup.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
+				
+				netConnection.call("setAuth", responder, groupSpecifier.groupspecWithoutAuthorizations(), "publisher");//传递给客户端without，客户端可以播放
+				
+				updateStatus("加入用户组 \"" + groupSpecifier.groupspecWithAuthorizations() + "\"\n");
+				updateStatus("加入用户组 \"" + groupSpecifier.groupspecWithoutAuthorizations() + "\"\n");
+			}
+			
+			/**
+			 * 
+			 * NetStraeam链接到用户组后触发
+			 * */
+			private function onNetStreamConnect():void
+			{
+				//加载话筒
+				netStream.client = this;                
+				var mic:Microphone = Microphone.getMicrophone();
+				if(mic)
+				{
+					mic.codec = SoundCodec.SPEEX;
+					mic.setSilenceLevel(0);
+					
+					netStream.attachAudio(mic);
+					
+					updateStatus("话筒设置完毕\n");
+				}
+				//加载视频，并发布视频和话筒
+				publishVideo()
+				
+			}
+			/**
+			 * 发布视听流
+			 * */
+			private function publishVideo():void{
+				var camera:Camera;
+				var cameras:Array = Camera.names;      
+				var findDefaultCamera:Boolean = false
+				var cameraName:String
+				var cameraIndex:int;
+				updateStatus("cameras.length = "+cameras.length+"\"\n");
+				if (cameras && cameras.length >0){
+					for(var j:int=0; j<cameras.length; j++){
+						if(cameras[j].toString().indexOf("USB") != -1){
+							camera = Camera.getCamera(j.toString())
+							cameraName = cameras[j].toString()
+							cameraIndex = j
+							findDefaultCamera = true
+						}
+					}
+					if(!findDefaultCamera){
+						camera = Camera.getCamera()
+					}
+					
+					if(camera){
+						videoDisplay.attachCamera(camera);
+						netStream.attachCamera(camera)
+						var cameraList:ArrayCollection = new ArrayCollection(cameras);
+						var index:int = cameraIndex;
+						
+					}
+				}
+				updateStatus("视频设置完毕\n");
+				
+				netStream.publish("abcd");
+				
+			}
+			
+			private function onNetGroupConnect():void
+			{
+				//加入用户组成功
+				joinedGroup = true;
+			}
+			
+			/**
+			 * 
+			 * 
+			 * 
+			 */ 
+			private function onPeerConnectHandler(_ns:NetStream):void
+			{
+				updateStatus("onPeerConnectHandler\n");
+			}
+			
+			
+			
+			
+			
+			/**
+			 * 断开链接
+			 * */
+			private function doDisconnect():void
+			{
+				if(netConnection)
+					netConnection.close();
+				videoDisplay.attachCamera(null);
+			}
+			
+			/**
+			 * netconnection断开后执行
+			 * */
+			private function onDisconnect():void
+			{
+				updateStatus("Disconnected\n");
+				netConnection = null;
+				netStream = null;
+				netGroup = null;
+				connected = false;
+				joinedGroup = false;
+			}
+			
+			private function clean():void
+			{
+				chatText.text = "";
+			}
+			
+			/**
+			 * 像用户组发送信息
+			 * */
+			private function doPost():void
+			{
+				var message:Object = new Object;
+				
+				message.user = userName.text;
+				message.text = chatText.text;
+				message.sequence = sequenceNumber++;
+				message.sender = netConnection.nearID;
+				
+				netGroup.post(message);
+				
+				updateStatus("==> " + chatText.text + "\n");
+				
+				chatText.callLater(clean);
+			}
+			
+			/**
+			 * 接收到信息后执行
+			 * */
+			private function onPosting(message:Object):void
+			{
+				updateStatus("<" + message.user + "> " + message.text + "\n");
+			}
+			
+			
+			public function validateConnectAllowed(isConnected:Boolean, groupNameText:String):Boolean
+			{
+				return (!isConnected) && (groupNameText.length > 0);
+			}
+		]]>
+	</mx:Script>
+	
+	<mx:VBox left="10" right="10" top="10" bottom="10" horizontalAlign="center" verticalGap="6">
+		<mx:VideoDisplay id="videoDisplay" width="320" height="240"/>
+		<mx:HBox width="100%">
+			<mx:Text text="Group:"/>
+			<mx:TextInput id="groupName" width="100%" enabled="{!connected}" text="default"/>
+			<mx:Button label="Connect" click="doConnect()"
+					   enabled="{validateConnectAllowed(connected, groupName.text)}"/>
+			<mx:Button label="Disconnect" click="doDisconnect()" enabled="{connected}"/>
+		</mx:HBox>
+		<mx:TextArea id="statusLog" width="100%" height="100%"/>
+		<mx:HBox width="100%">
+			<mx:TextInput id="userName" width="160"/>
+			<mx:TextInput id="chatText" width="100%" enabled="{joinedGroup}" enter="doPost()"/>
+		</mx:HBox>
+	</mx:VBox>
+	
+</mx:Application>
