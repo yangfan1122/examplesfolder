@@ -198,7 +198,7 @@
 				}
 				else if(event.info.code == "NetGroup.Neighbor.Connect")
 				{
-					Test.t("NetGroup.Neighbor.Connect");
+					Test.t("NetGroup.Neighbor.Connect 当邻域连接到此节点时发送。");
 					hasNeighbor = true;
 				}
 				else if(event.info.code == "NetGroup.Posting.Notify")
@@ -211,7 +211,7 @@
 				}
 				else if(event.info.code == "NetStream.Connect.Success")
 				{
-					Test.t("P2P 连接尝试成功");
+					Test.t("NetStream.Connect.Success P2P 连接尝试成功");
 					alertText.text = "waiting...";
 					
 					video=new Video();
