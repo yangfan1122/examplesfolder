@@ -12,7 +12,7 @@ public class AutomaticOrbitController extends Object
     private var _camara:Camera3D;
     private var _stage:DisplayObject;
     private var _target:ObjectContainer3D;
-    private var _direction:String = "right";
+    private var _direction:String = "right";//自动旋转方向
     private var _distance:Number = 800;
     private var _orbitSpeed:Number = 12;
     private var _yTopLimit:Number = 400;

@@ -49,7 +49,15 @@
 			super.rotationY = -40;
 		}
 
-		
+		/**
+		 * 方向 
+		 * @return 
+		 * 
+		 */		
+		public function get getRotationY():Number
+		{
+			return super.rotationY;
+		}
 		
 		
 	}

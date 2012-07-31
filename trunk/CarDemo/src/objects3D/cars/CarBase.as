@@ -97,7 +97,7 @@ package objects3D.cars
 		 */		
 		public function driveCar(param1:Boolean = false) : void
 		{
-			var _speed:Number = 20;
+			var _speed:Number = 10;
 			if(param1)
 			{
 				frontRightWheel.rotationX -= _speed;
@@ -223,5 +223,31 @@ package objects3D.cars
 				}
 			}
 		}
+		
+		
+		
+		
+		
+		
+		/**
+		 * 轮子旋转角度 
+		 * @return 
+		 * 
+		 */		
+		public function get getFrontRightWheelRotationY():Number
+		{
+			return frontRightWheel.rotationY;
+		}
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 	}
 }

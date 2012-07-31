@@ -65,7 +65,7 @@
 				garageMesh.material = new TextureMaterial(new BitmapTexture(new this.GarageMapAsset().bitmapData), true);
 				garageMesh.roll(180);
 				garageMesh.geometry.scale(3);
-				super.addChild(this.garageMesh);
+				//super.addChild(this.garageMesh);//柱子、天棚
 				super.y = 188;
 			}
 		}
