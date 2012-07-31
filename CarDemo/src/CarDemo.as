@@ -91,6 +91,8 @@ package
 		
 		private var _carDirection:String = "";//转向
 		private var _carStart:String = "";//前进 后退
+		private var speedObj:Object = {x:10, z:null};//速度对象，默认x方向速度0.1
+		private var wheelRotationY:Number;//转弯时轮子的弧度，左前轮右前轮一样
 		
 		
 		//==========================================================================
@@ -174,9 +176,14 @@ package
 				}
 			}
 			
+			//速度
+			var _temp:Number = ((carLib[carNum].getRotationY / Math.PI) * 180) % 360;
+			speedObj.z = speedObj.x * Math.sin(360 - Math.abs(_temp));
+			
 			//手动视角控制器
 			orbitController = new OrbitControllerExtended(viewport.camera, this.viewport);
 			orbitController.activate = true;
+			//orbitController.activate = false;
 			
 			//自动视角控制器
 			selfController = new AutomaticOrbitController(viewport.camera, this.viewport);
@@ -222,6 +229,11 @@ package
 			viewport.height = stage.stageHeight;
 		}
 		
+		/**
+		 * 渲染 
+		 * @param event
+		 * 
+		 */		
 		private function renderScene(event:Event) : void
 		{
 			cameraLight.position = viewport.camera.position;//从“眼睛”的方向发出的光
@@ -250,9 +262,10 @@ package
 			//            }
 			//        }
 
+			carCtrl();
 
-			
-			
+			trace(carLib[carNum].getFrontRightWheel);
+
 		}
 		
 		/**
@@ -280,44 +293,6 @@ package
 				{
 					_carStart = "back";
 				}
-
-				if(_carDirection == "left" && _carStart == "forward")
-				{
-					carLib[carNum].turns("left");
-					carLib[carNum].driveCar(true);//向前
-				}
-				else if(_carDirection == "right" && _carStart == "forward")
-				{
-					carLib[carNum].turns("right");
-					carLib[carNum].driveCar(true);//向前
-				}
-				else if(_carDirection == "left" && _carStart == "back")
-				{
-					carLib[carNum].turns("left");
-					carLib[carNum].driveCar(false);//向后
-				}
-				else if(_carDirection == "right" && _carStart == "back")
-				{
-					carLib[carNum].turns("right");
-					carLib[carNum].driveCar(false);//向后
-				}
-				else if(_carDirection == "left")
-				{
-					carLib[carNum].turns("left");
-				}
-				else if(_carDirection == "right")
-				{
-					carLib[carNum].turns("right");
-				}
-				else if(_carStart == "forward")
-				{
-					carLib[carNum].driveCar(true);//向前
-				}
-				else if(_carStart == "back")
-				{
-					carLib[carNum].driveCar(false);//向后
-				}
-				
 			}
 			else if(event.type == KeyboardEvent.KEY_UP)
 			{
@@ -332,6 +307,66 @@ package
 			}
 			
 		}
+		
+		private function carCtrl():void
+		{
+			wheelRotationY = carLib[carNum].getFrontRightWheelRotationY;//轮子弧度
+			
+			if(_carDirection == "left" && _carStart == "forward")
+			{
+				carLib[carNum].turns("left");
+				carLib[carNum].driveCar(true);//向前
+			}
+			else if(_carDirection == "right" && _carStart == "forward")
+			{
+				carLib[carNum].turns("right");
+				carLib[carNum].driveCar(true);//向前
+			}
+			else if(_carDirection == "left" && _carStart == "back")
+			{
+				carLib[carNum].turns("left");
+				carLib[carNum].driveCar(false);//向后
+			}
+			else if(_carDirection == "right" && _carStart == "back")
+			{
+				carLib[carNum].turns("right");
+				carLib[carNum].driveCar(false);//向后
+			}
+			else if(_carDirection == "left" && _carStart == "")
+			{
+				carLib[carNum].turns("left");
+			}
+			else if(_carDirection == "right" && _carStart == "")
+			{
+				carLib[carNum].turns("right");
+			}
+			else if(_carStart == "forward" && _carDirection == "")
+			{
+				carLib[carNum].driveCar(true);//向前
+				
+				carLib[carNum].x += speedObj.x;
+				carLib[carNum].z -= speedObj.z;
+			}
+			else if(_carStart == "back" && _carDirection == "")
+			{
+				carLib[carNum].driveCar(false);//向后
+				
+				carLib[carNum].x -= speedObj.x;
+				carLib[carNum].z += speedObj.z;
+			}
+			else if(_carStart == "" && _carDirection == "")
+			{
+				//trace("空 空");
+			}
+			else
+			{
+				trace("carCtrl error");
+			}
+			
+			
+		}
+		
+		
 		
 		
 		
