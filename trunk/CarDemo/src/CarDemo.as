@@ -35,7 +35,7 @@ package
 	 * @author austin.yue
 	 * 
 	 */
-	[SWF(width="800", height="600")]
+	[SWF(width="800", height="600", backgroundColor="0x000000")]
 	public class CarDemo extends Sprite
 	{
 		[Embed(source="garage/EnvPosXGarage.jpg")]
@@ -91,8 +91,9 @@ package
 		
 		private var _carDirection:String = "";//转向
 		private var _carStart:String = "";//前进 后退
-		private var speedObj:Object = {x:10, z:null};//速度对象，默认x方向速度0.1
-		private var wheelRotationY:Number;//转弯时轮子的弧度，左前轮右前轮一样
+		private var speedObj:Object = {x:null, z:null};//速度对象
+		private var defaultSpeed:int = 20;//汽车速度，由此根据三角函数得出x和z方向的速度
+		//private var wheelRotationY:Number;//转弯时轮子的弧度，左前轮右前轮一样
 		
 		
 		//==========================================================================
@@ -177,8 +178,8 @@ package
 			}
 			
 			//速度
-			var _temp:Number = ((carLib[carNum].getRotationY / Math.PI) * 180) % 360;
-			speedObj.z = speedObj.x * Math.sin(360 - Math.abs(_temp));
+			//speedObj.x = defaultSpeed * Math.cos(carLib[carNum].getRotationY);
+			//speedObj.z = defaultSpeed * Math.sin(carLib[carNum].getRotationY);
 			
 			//手动视角控制器
 			orbitController = new OrbitControllerExtended(viewport.camera, this.viewport);
@@ -264,8 +265,6 @@ package
 
 			carCtrl();
 
-			trace(carLib[carNum].getFrontRightWheel);
-
 		}
 		
 		/**
@@ -305,54 +304,96 @@ package
 					_carStart = "";
 				}
 			}
-			
 		}
+
 		
+		/**
+		 * 每帧执行 
+		 * 
+		 */		
 		private function carCtrl():void
 		{
-			wheelRotationY = carLib[carNum].getFrontRightWheelRotationY;//轮子弧度
+			//速度
+			var _radian:Number = (carLib[carNum].rotationY * Math.PI) / 180;//弧度
+			speedObj.x = defaultSpeed * Math.sin(_radian);
+			speedObj.z = defaultSpeed * Math.cos(_radian);
+			//trace(carLib[carNum].rotationY, Math.sin(_radian), Math.cos(_radian));
 			
 			if(_carDirection == "left" && _carStart == "forward")
 			{
+				//左前
 				carLib[carNum].turns("left");
-				carLib[carNum].driveCar(true);//向前
+				carLib[carNum].driveCar(true);
+				
+				carLib[carNum].x -= speedObj.x;
+				carLib[carNum].z -= speedObj.z;
+
+				carLib[carNum].rotationY -= 1;
 			}
 			else if(_carDirection == "right" && _carStart == "forward")
 			{
+				//右前
 				carLib[carNum].turns("right");
-				carLib[carNum].driveCar(true);//向前
+				carLib[carNum].driveCar(true);
+				
+				carLib[carNum].x -= speedObj.x;
+				carLib[carNum].z -= speedObj.z;
+
+				carLib[carNum].rotationY += 1;
 			}
 			else if(_carDirection == "left" && _carStart == "back")
 			{
+				//左后
 				carLib[carNum].turns("left");
-				carLib[carNum].driveCar(false);//向后
+				carLib[carNum].driveCar(false);
+				
+				carLib[carNum].x += speedObj.x;
+				carLib[carNum].z += speedObj.z;
+				
+				carLib[carNum].rotationY += 1;
+				
 			}
 			else if(_carDirection == "right" && _carStart == "back")
 			{
+				//右后
 				carLib[carNum].turns("right");
-				carLib[carNum].driveCar(false);//向后
+				carLib[carNum].driveCar(false);
+				
+				carLib[carNum].x += speedObj.x;
+				carLib[carNum].z += speedObj.z;
+				
+				carLib[carNum].rotationY -= 1;
+				
 			}
 			else if(_carDirection == "left" && _carStart == "")
 			{
+				//左
 				carLib[carNum].turns("left");
 			}
 			else if(_carDirection == "right" && _carStart == "")
 			{
+				//右
 				carLib[carNum].turns("right");
 			}
 			else if(_carStart == "forward" && _carDirection == "")
 			{
-				carLib[carNum].driveCar(true);//向前
+				//前
+				carLib[carNum].driveCar(true);
 				
-				carLib[carNum].x += speedObj.x;
+				carLib[carNum].x -= speedObj.x;
 				carLib[carNum].z -= speedObj.z;
+				
+				carLib[carNum].resumeWheelRotationY();//轮子复位
 			}
 			else if(_carStart == "back" && _carDirection == "")
 			{
-				carLib[carNum].driveCar(false);//向后
-				
-				carLib[carNum].x -= speedObj.x;
+				//后
+				carLib[carNum].driveCar(false);
+
+				carLib[carNum].x += speedObj.x;
 				carLib[carNum].z += speedObj.z;
+						
+				carLib[carNum].resumeWheelRotationY();//轮子复位
 			}
 			else if(_carStart == "" && _carDirection == "")
 			{

@@ -91,7 +91,7 @@ package objects3D.cars
 		//    }
 		
 		/**
-		 * 开车 
+		 * 开车 轮子转
 		 * @param param1
 		 * 
 		 */		
@@ -114,24 +114,27 @@ package objects3D.cars
 			}
 		}
 
+	
 		/**
-		 * 转弯 
+		 * 转弯
+		 * @param _direction
 		 * 
 		 */		
 		public function turns(_direction:String = ""):void
 		{
-			var _speed:Number = 1;
+			var _speed:uint = 2;//轮子旋转速度
 			
-			if(_direction == "left" && frontRightWheel.rotationY >= -20)
+			if(_direction == "left" && frontRightWheel.rotationY > -19)
 			{
 				frontRightWheel.rotationY -= _speed;
 				frontLeftWheel.rotationY -= _speed;
 			}
-			else if(_direction == "right" && frontRightWheel.rotationY < 20)
+			else if(_direction == "right" && frontRightWheel.rotationY < 19)
 			{
 				frontRightWheel.rotationY += _speed;
 				frontLeftWheel.rotationY += _speed;
 			}
+			
 		}
 		
 		
@@ -223,27 +226,27 @@ package objects3D.cars
 				}
 			}
 		}
-		
-		
-		
-		
-		
-		
+
+
 		/**
-		 * 轮子旋转角度 
-		 * @return 
+		 * 轮子角度复位 
+		 * @param _num
 		 * 
 		 */		
-		public function get getFrontRightWheelRotationY():Number
+		public function resumeWheelRotationY():void
 		{
-			return frontRightWheel.rotationY;
+			//trace(frontRightWheel.rotationY);
+			if(Math.floor(frontRightWheel.rotationY) > 0)
+			{
+				Math.floor(frontRightWheel.rotationY--);
+				Math.floor(frontLeftWheel.rotationY--);
+			}
+			else if(Math.floor(frontRightWheel.rotationY) < 0)
+			{
+				Math.floor(frontRightWheel.rotationY++);
+				Math.floor(frontLeftWheel.rotationY++);
+			}
 		}
-		
-		
-		
-		
-		
-		
 		
 		
 		

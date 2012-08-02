@@ -46,7 +46,7 @@
 			backLeftWheel = new Wheel(param4, "camaro", "left");
 			backLeftWheel.position = new Vector3D(154, 70, 245);
 			super.y = -50;
-			super.rotationY = -40;
+			super.rotationY = -40;//-40 单位:角度
 		}
 
 		/**
